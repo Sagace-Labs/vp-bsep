@@ -1,10 +1,10 @@
 """BSEP / ABCB11 inhibition from a SMILES string.
 
 Inhibition of the bile salt export pump is the canonical molecular initiating
-event for cholestatic drug-induced liver injury. Blocking the transporter causes bile acids to accumulate inside the hepatocyte.
+event for cholestatic drug-induced liver injury.
 
     from vp_bsep import predict
-    predict(["CC(=O)Oc1ccccc1C(=O)O"])      # -> DataFrame[bsep_inhib]
+    predict(["CC(=O)Oc1ccccc1C(=O)O"])      # -> DataFrame[bsep_inhib, bsep_potency_um]
 """
 
 from __future__ import annotations
@@ -12,18 +12,43 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from vp_bsep.target import TARGET, TARGETS, Target, all_names
 from vp_bsep.target import get as get_target
 from vp_core.registry import Version, VersionedPathway
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 PATHWAY = "bsep"
 VERSIONS_DIR = Path(__file__).resolve().parent / "versions"
 
-_pathway = VersionedPathway(PATHWAY, VERSIONS_DIR)
+
+def _predict_values(model: Any, smiles: list[str], version: Version) -> np.ndarray:
+    """Columns for ``version``, in the order its signature declares them.
+
+    Signature 1 emits a probability; signature 2 adds a potency.
+    """
+    from rdkit import Chem, RDLogger
+
+    from vp_core import fingerprints, xgb
+
+    RDLogger.DisableLog("rdApp.*")
+    X = fingerprints.featurize(smiles, str(version.features))
+    if isinstance(model, xgb.CensoredModel):
+        values = np.column_stack([model.probability(X), model.potency(X)])
+    else:
+        values = xgb.predict_proba(model, X).reshape(-1, 1)
+
+    # An unparseable input is a declared NaN.
+    unparseable = [Chem.MolFromSmiles(s) is None for s in smiles]
+    values = values.astype(np.float32)
+    values[np.asarray(unparseable)] = np.nan
+    return values
+
+
+_pathway = VersionedPathway(PATHWAY, VERSIONS_DIR, predict_fn=_predict_values)
 
 __all__ = [
     "PATHWAY",

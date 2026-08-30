@@ -46,9 +46,21 @@ def test_unparseable_input_becomes_nan_rather_than_raising():
 
 
 def test_a_version_can_be_pinned():
-    pinned = vp_bsep.predict([ASPIRIN], version="v1")
-    latest = vp_bsep.predict([ASPIRIN])
-    assert pinned["bsep_inhib"].iloc[0] == pytest.approx(latest["bsep_inhib"].iloc[0])
+    """Every release stays loadable under its own contract, not the newest one."""
+    for name in vp_bsep.versions():
+        frame = vp_bsep.predict([ASPIRIN], version=name)
+        declared = [o["name"] for o in vp_bsep.signature(name)["outputs"]]
+        assert list(frame.columns) == declared
+
+    assert vp_bsep.predict([ASPIRIN]).equals(
+        vp_bsep.predict([ASPIRIN], version=vp_bsep.current_version())
+    )
+
+
+def test_predicted_potency_is_positive():
+    potency = vp_bsep.predict([ASPIRIN, CAFFEINE])["bsep_potency_um"].to_numpy()
+    assert np.all(np.isfinite(potency))
+    assert np.all(potency > 0.0)
 
 
 def test_a_single_string_is_rejected():

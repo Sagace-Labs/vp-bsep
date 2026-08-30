@@ -1,0 +1,53 @@
+schema = 1
+pathway = "bsep"
+version = "v2"
+released = "2026-08-30"
+supersedes = "v1"
+reason = "fits the measured potency interval instead of the binary label, so a compound observed only above an assay ceiling stays a bound; adds predicted potency as a second output"
+
+[signature]
+version = 2
+inputs = ["smiles"]
+
+[[signature.outputs]]
+name = "bsep_inhib"
+dtype = "float32"
+range = [0.0, 1.0]
+semantics = "P(inhibits BSEP/ABCB11 at IC50 or Ki below 100 uM)"
+missing = "NaN when RDKit cannot parse the input SMILES"
+
+[[signature.outputs]]
+name = "bsep_potency_um"
+dtype = "float32"
+semantics = "Predicted BSEP/ABCB11 IC50 or Ki in uM. Read against the exposure expected in the liver; the probability alone fixes one threshold"
+missing = "NaN when RDKit cannot parse the input SMILES"
+
+[dataset]
+name = "ChEMBL ABCB11 (BSEP) bioactivity"
+source = "ChEMBL target CHEMBL6020 (Homo sapiens, UniProt O95342), standard_type in ['IC50', 'Ki'], one row per compound carrying median potency, assay ceiling and a label binarised at 100 uM"
+url = "https://www.ebi.ac.uk/chembl/api/data/activity?target_chembl_id=CHEMBL6020"
+retrieved = "2026-06-04"
+licence = "CC-BY-SA-3.0"
+redistributable = true
+path = "data/bsep_chembl.parquet"
+sha256 = "77c30dcd81a261f2ff5b2b6d89a74f71cff1d956bbdceb1d4e59c98eb44312ba"
+n_rows = 1151
+base_rate = 0.356212
+fetch = "python -m vp_bsep.data fetch --verify"
+
+[model]
+family = "xgboost-aft"
+features = "morgan2c_physchem_ion"
+fit = "full dataset minus a 10% scaffold carve used for early stopping and probability calibration"
+weights = "weights.joblib"
+sha256 = "d53e1714570effb624f3b730a23daa7977d7685f7b31a9d0fb3723e3f706fb53"
+
+[protocol]
+id = "scaffold-shuffle-5seed@1"
+provider = "vp-core"
+core_version = "1.1.0"
+
+[provenance]
+python = "3.11.11"
+rdkit = "2026.03.5"
+xgboost = "3.2.0"

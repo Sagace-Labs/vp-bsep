@@ -6,7 +6,7 @@ authors:
   - name: "Sagace Labs"
 repository-code: "https://github.com/Sagace-Labs/vp-bsep"
 license: Apache-2.0
-version: "1.0.0"
+version: "2.0.0"
 abstract: >-
   A predictor of bile salt export pump (BSEP / ABCB11) inhibition
   from molecular structure.

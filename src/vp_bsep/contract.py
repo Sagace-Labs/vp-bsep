@@ -13,7 +13,7 @@ from typing import Any
 
 __all__ = ["INPUTS", "OUTPUTS", "SIGNATURE_VERSION", "as_manifest_table", "column_names"]
 
-SIGNATURE_VERSION = 1
+SIGNATURE_VERSION = 2
 
 INPUTS: list[str] = ["smiles"]
 
@@ -24,7 +24,16 @@ OUTPUTS: list[dict[str, Any]] = [
         "range": [0.0, 1.0],
         "semantics": "P(inhibits BSEP/ABCB11 at IC50 or Ki below 100 uM)",
         "missing": "NaN when RDKit cannot parse the input SMILES",
-    }
+    },
+    {
+        "name": "bsep_potency_um",
+        "dtype": "float32",
+        "semantics": (
+            "Predicted BSEP/ABCB11 IC50 or Ki in uM. Read against the exposure "
+            "expected in the liver; the probability alone fixes one threshold"
+        ),
+        "missing": "NaN when RDKit cannot parse the input SMILES",
+    },
 ]
 
 

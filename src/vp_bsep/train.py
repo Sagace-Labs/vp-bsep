@@ -65,11 +65,20 @@ def build_version(
     table = bsep_data.load()
     smiles = table["smiles"].tolist()
     y = table["label"].to_numpy(dtype=int)
+    lower, upper = bsep_data.potency_interval(table)
 
-    # Deployment fit: everything, with a small scaffold carve for early stopping.
+    # Deployment fit: everything, with a small scaffold carve that stops
+    # boosting and calibrates the probability.
     train_idx, val_idx = scaffold_train_val(smiles, val_frac=0.10, seed=seed)
     X = fingerprints.featurize(smiles, bsep_model.FEATURES)
-    fitted = bsep_model.fit(X[train_idx], y[train_idx], X[val_idx], y[val_idx], seed=seed)
+    fitted = bsep_model.fit(
+        X[train_idx],
+        (lower[train_idx], upper[train_idx]),
+        X[val_idx],
+        (lower[val_idx], upper[val_idx]),
+        y[val_idx],
+        seed=seed,
+    )
 
     directory.mkdir(parents=True)
     try:
@@ -120,8 +129,9 @@ def _write_version(
             "source": (
                 f"ChEMBL target {TARGET.chembl_target} "
                 f"({TARGET.organism}, UniProt {TARGET.uniprot}), "
-                f"standard_type in {list(TARGET.potency_types)}, "
-                f"binarised at {CUTOFF_UM:g} uM median potency"
+                f"standard_type in {list(TARGET.potency_types)}, one row per "
+                f"compound carrying median potency, assay ceiling and a label "
+                f"binarised at {CUTOFF_UM:g} uM"
             ),
             "url": (
                 "https://www.ebi.ac.uk/chembl/api/data/activity"
@@ -137,10 +147,11 @@ def _write_version(
             "fetch": "python -m vp_bsep.data fetch --verify",
         },
         "model": {
-            "family": "xgboost",
+            "family": "xgboost-aft",
             "features": bsep_model.FEATURES,
             "fit": (
-                "full dataset minus a 10% scaffold carve used only for early stopping"
+                "full dataset minus a 10% scaffold carve used for early stopping "
+                "and probability calibration"
             ),
             "weights": "weights.joblib",
             "sha256": hashing.sha256_file(weights_path),

@@ -46,6 +46,7 @@ def evaluate_version(
     table = bsep_data.example() if use_example else bsep_data.load()
     smiles = table["smiles"].tolist()
     y = table["label"].to_numpy(dtype=int)
+    lower, upper = bsep_data.potency_interval(table)
     X = fingerprints.featurize(smiles, bsep_model.FEATURES)
 
     per_seed: list[dict[str, float]] = []
@@ -53,9 +54,14 @@ def evaluate_version(
     for seed in protocol.seeds:
         train_idx, val_idx, test_idx = protocol.split_indices(smiles, seed)
         fitted = bsep_model.fit(
-            X[train_idx], y[train_idx], X[val_idx], y[val_idx], seed=seed
+            X[train_idx],
+            (lower[train_idx], upper[train_idx]),
+            X[val_idx],
+            (lower[val_idx], upper[val_idx]),
+            y[val_idx],
+            seed=seed,
         )
-        proba = bsep_model.predict_proba(fitted, [smiles[i] for i in test_idx])
+        proba, _potency = bsep_model.predict(fitted, [smiles[i] for i in test_idx])
         scored = metrics_mod.binary_metrics(y[test_idx], proba)
         per_seed.append(scored)
         folds.append(

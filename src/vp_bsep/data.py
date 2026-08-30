@@ -3,8 +3,7 @@
 The shipped table is the *parsed* result — one row per compound, keyed on the
 standardised InChIKey — and that is what the manifest hash covers. ``fetch``
 rebuilds it from ChEMBL and compares hashes, so its real job is drift
-detection: a differing hash means the upstream target data changed, which is a
-scientific event worth a new version.
+detection.
 
 Pipeline: page the ChEMBL activity API for CHEMBL6020 restricted to IC50/Ki,
 keep nanomolar potencies, treat a ``>`` relation as a censored inactive,
@@ -37,6 +36,7 @@ __all__ = [
     "example",
     "fetch",
     "load",
+    "potency_interval",
     "verify",
 ]
 
@@ -72,6 +72,20 @@ def example() -> pd.DataFrame:
     if not EXAMPLE_PATH.exists():
         raise FileNotFoundError(_missing(EXAMPLE_PATH))
     return dataset.read_table(EXAMPLE_PATH)
+
+
+def potency_interval(table: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """``(lower, upper)`` potency bounds in uM, one row per compound.
+
+    A measured compound gets a point interval at its median potency. One seen
+    only above an assay ceiling gets ``[ceiling, inf)``.
+    """
+    median = table["potency_um"].to_numpy(dtype=float)
+    ceiling = table["censored_at"].to_numpy(dtype=float)
+    measured = np.isfinite(median)
+    lower = np.where(measured, median, np.nan_to_num(ceiling, nan=CUTOFF_UM))
+    upper = np.where(measured, median, np.inf)
+    return lower.astype(float), upper.astype(float)
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +149,7 @@ def _to_compounds(raw: pd.DataFrame, cutoff_um: float) -> pd.DataFrame:
     records = []
     for inchikey, group in df.groupby("inchikey"):
         measured = group.loc[~group["censored"], "potency_um"]
+        censored = group.loc[group["censored"], "potency_um"]
         median = float(np.median(measured)) if len(measured) else float("inf")
         records.append(
             {
@@ -142,6 +157,9 @@ def _to_compounds(raw: pd.DataFrame, cutoff_um: float) -> pd.DataFrame:
                 "smiles": group["smiles"].iloc[0],
                 "label": int(median <= cutoff_um),
                 "potency_um": median,
+                # Highest concentration the compound was tested to without
+                # inhibiting.
+                "censored_at": float(censored.max()) if len(censored) else float("nan"),
                 "n_measurements": len(group),
             }
         )

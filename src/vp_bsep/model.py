@@ -1,6 +1,9 @@
-"""The BSEP model: XGBoost on ECFP4.
+"""The BSEP model: censored XGBoost on counted ECFP4 with a descriptor panel.
 
 Hyperparameters and feature choice.
+
+The target is the measured potency interval rather than the binary label. The
+probability is calibrated against the cutoff on the validation fold.
 """
 
 from __future__ import annotations
@@ -9,11 +12,12 @@ from typing import Any
 
 import numpy as np
 
+from vp_bsep.target import CUTOFF_UM
 from vp_core import fingerprints, xgb
 
-__all__ = ["FEATURES", "HYPERPARAMS", "fit", "predict_proba"]
+__all__ = ["FEATURES", "HYPERPARAMS", "fit", "predict"]
 
-FEATURES = "morgan2_2048"
+FEATURES = "morgan2c_physchem_ion"
 
 HYPERPARAMS: dict[str, Any] = {
     "n_estimators": 2000,
@@ -29,13 +33,29 @@ HYPERPARAMS: dict[str, Any] = {
 }
 
 
-def fit(X_train, y_train, X_val, y_val, *, seed: int = 0) -> Any:
-    """Fit one classifier. Early stopping watches the validation fold only."""
-    return xgb.fit_binary(
-        X_train, y_train, X_val, y_val, params=dict(HYPERPARAMS), seed=seed
+def fit(
+    X_train,
+    interval_train: tuple[np.ndarray, np.ndarray],
+    X_val,
+    interval_val: tuple[np.ndarray, np.ndarray],
+    y_val,
+    *,
+    seed: int = 0,
+) -> xgb.CensoredModel:
+    """Fit one censored model. The validation fold stops boosting and calibrates."""
+    return xgb.fit_censored(
+        X_train,
+        *interval_train,
+        X_val,
+        *interval_val,
+        y_val,
+        params=dict(HYPERPARAMS),
+        cutoff_um=CUTOFF_UM,
+        seed=seed,
     )
 
 
-def predict_proba(model, smiles: list[str]) -> np.ndarray:
-    """P(BSEP inhibitor) for arbitrary SMILES, as a 1-D array."""
-    return xgb.predict_proba(model, fingerprints.featurize(smiles, FEATURES))
+def predict(model: xgb.CensoredModel, smiles: list[str]) -> tuple[np.ndarray, np.ndarray]:
+    """``(probability, potency_um)`` for arbitrary SMILES."""
+    X = fingerprints.featurize(smiles, FEATURES)
+    return model.probability(X), model.potency(X)
