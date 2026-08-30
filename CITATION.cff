@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+title: "vp-bsep: BSEP/ABCB11 inhibition prediction"
+message: "If you use this package, please cite it and the underlying ChEMBL data."
+type: software
+authors:
+  - name: "Sagace Labs"
+repository-code: "https://github.com/Sagace-Labs/vp-bsep"
+license: Apache-2.0
+version: "1.0.0"
+abstract: >-
+  A predictor of bile salt export pump (BSEP / ABCB11) inhibition
+  from molecular structure.
+keywords:
+  - cheminformatics
+  - drug-induced liver injury
+  - cholestasis
+  - BSEP
+  - ABCB11
+references:
+  - type: article
+    title: "The ChEMBL Database in 2023"
+    authors:
+      - family-names: Zdrazil
+        given-names: Barbara
+    journal: "Nucleic Acids Research"
+    year: 2024
+    doi: "10.1093/nar/gkad1004"

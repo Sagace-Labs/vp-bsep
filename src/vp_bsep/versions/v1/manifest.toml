@@ -1,0 +1,46 @@
+schema = 1
+pathway = "bsep"
+version = "v1"
+released = "2026-08-29"
+reason = "first release: XGBoost on ECFP4 over the ChEMBL ABCB11 IC50/Ki set, binarised at 100 uM"
+
+[signature]
+version = 1
+inputs = ["smiles"]
+
+[[signature.outputs]]
+name = "bsep_inhib"
+dtype = "float32"
+range = [0.0, 1.0]
+semantics = "P(inhibits BSEP/ABCB11 at IC50 or Ki below 100 uM)"
+missing = "NaN when RDKit cannot parse the input SMILES"
+
+[dataset]
+name = "ChEMBL ABCB11 (BSEP) bioactivity"
+source = "ChEMBL target CHEMBL6020 (Homo sapiens, UniProt O95342), standard_type in ['IC50', 'Ki'], binarised at 100 uM median potency"
+url = "https://www.ebi.ac.uk/chembl/api/data/activity?target_chembl_id=CHEMBL6020"
+retrieved = "2026-06-04"
+licence = "CC-BY-SA-3.0"
+redistributable = true
+path = "data/bsep_chembl.parquet"
+sha256 = "77c30dcd81a261f2ff5b2b6d89a74f71cff1d956bbdceb1d4e59c98eb44312ba"
+n_rows = 1151
+base_rate = 0.356212
+fetch = "python -m vp_bsep.data fetch --verify"
+
+[model]
+family = "xgboost"
+features = "morgan2_2048"
+fit = "full dataset minus a 10% scaffold carve used only for early stopping"
+weights = "weights.joblib"
+sha256 = "b3c8c342aa26c456a3b7fd584822526cf951dfad708202f2bcaaae599878ebbc"
+
+[protocol]
+id = "scaffold-shuffle-5seed@1"
+provider = "vp-core"
+core_version = "1.0.0"
+
+[provenance]
+python = "3.11.11"
+rdkit = "2026.03.5"
+xgboost = "3.2.0"

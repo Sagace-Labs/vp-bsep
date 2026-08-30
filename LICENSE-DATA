@@ -1,0 +1,39 @@
+Data licence — data/bsep_chembl.parquet
+=======================================
+
+This file applies ONLY to the bundled dataset at `data/bsep_chembl.parquet`
+and its derived fixture at `data/example/bsep_example.parquet`. The source
+code and the trained weights in `src/vp_bsep/` are licensed separately under
+Apache-2.0; see LICENSE.
+
+Source
+------
+ChEMBL (https://www.ebi.ac.uk/chembl/), target CHEMBL6020 — bile salt export
+pump, Homo sapiens, UniProt O95342. Activity records of standard_type IC50 and
+Ki, retrieved 2026-06-04 via the ChEMBL activity REST API.
+
+Derivation
+----------
+Nanomolar potencies were converted to micromolar; a ">" standard_relation was
+treated as a censored inactive; structures were standardised (normalise,
+largest fragment, neutralise) and collapsed to one row per InChIKey by median
+potency; the binary label applies a 100 µM cutoff to that median. Only the
+InChIKey, standardised SMILES, binary label, median potency and measurement
+count are retained.
+
+Licence
+-------
+ChEMBL data is made available under the Creative Commons Attribution-ShareAlike
+3.0 Unported licence (CC BY-SA 3.0):
+
+    https://creativecommons.org/licenses/by-sa/3.0/
+
+The share-alike condition applies to this dataset and to adaptations of it. It
+does not extend to the source code or to the trained model weights distributed
+with this package.
+
+Attribution
+-----------
+Zdrazil B, Felix E, Hunter F, et al. The ChEMBL Database in 2023: a drug
+discovery platform spanning multiple bioactivity data types and time periods.
+Nucleic Acids Research 2024, 52(D1):D1180-D1192.
